@@ -3,30 +3,38 @@ name: Sync to Repo 2 Staging
 on:
   push:
     branches:
-      - main  # Change to your Repo 1 source branch if different
+      - main  # Change to your source branch if different
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout Repo 1 without saving default GITHUB_TOKEN credentials
       - name: Checkout Repo 1
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          fetch-depth: 0  # Ensures full commit history is retrieved
+          fetch-depth: 0
 
-      # Step 2: Push code to Repo 2 staging branch using your custom PAT
-      - name: Sync to Repo 2 (staging branch)
+      - name: Verify & Push to Repo 2
         env:
           PAT: ${{ secrets.REPO_2_PAT }}
-          TARGET_REPO: "GPL-PRC0977/repo_2"
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Add Repo 2 remote using authentication inline
-          git remote add target https://x-access-token:${PAT}@github.com/${TARGET_REPO}.git
-          
-          # Push directly to Repo 2 staging
+          # 1. Check if the secret is being detected
+          if [ -z "$PAT" ]; then
+            echo "CRITICAL ERROR: The secret REPO_2_PAT is empty or not accessible."
+            echo "Please verify it exists under Repo 1 Settings -> Secrets and variables -> Actions."
+            exit 1
+          else
+            echo "SUCCESS: REPO_2_PAT secret detected."
+          fi
+
+          # 2. Configure Git user details
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 3. Add Repo 2 remote
+          git remote add target "https://x-access-token:${PAT}@github.com/GPL-PRC0977/repo_2.git"
+
+          # 4. Attempt Push
+          echo "Pushing code to GPL-PRC0977/repo_2 (staging branch)..."
           git push target HEAD:refs/heads/staging --force
