@@ -5,10 +5,6 @@ on:
     branches:
       - main
 
-# The built-in GITHUB_TOKEN only needs to read Repo 1.
-permissions:
-  contents: read
-
 concurrency:
   group: sync-repo-2-staging
   cancel-in-progress: true
@@ -26,21 +22,22 @@ jobs:
 
       - name: Push to Repo 2 staging
         env:
-          REPO_2_PAT: ${{ secrets.REPO_2_PAT }}
-          TARGET_REPO: GPL-PRC0977/repo_2
+          PAT: ${{ secrets.REPO_2_PAT }}
+          TARGET_REPO: "GPL-PRC0977/repo_2"
         shell: bash
         run: |
           set -euo pipefail
 
+          # Fail fast if secret is not populated
+          if [ -z "${PAT:-}" ]; then
+            echo "ERROR: REPO_2_PAT secret is missing or empty."
+            exit 1
+          fi
+
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Avoid permanently storing the PAT in the repository's remote URL.
-          AUTH_HEADER="$(printf 'x-access-token:%s' "$REPO_2_PAT" | base64 -w 0)"
-
-          git \
-            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
-            push \
-            "https://github.com/${TARGET_REPO}.git" \
-            HEAD:refs/heads/staging \
-            --force
+          # Use direct URL-encoded inline access for cross-repo push
+          git remote add target "https://x-access-token:${PAT}@github.com/${TARGET_REPO}.git"
+          
+          git push target HEAD:refs/heads/staging --force
