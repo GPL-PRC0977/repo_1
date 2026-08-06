@@ -3,38 +3,44 @@ name: Sync to Repo 2 Staging
 on:
   push:
     branches:
-      - main  # Change to your source branch if different
+      - main
+
+# The built-in GITHUB_TOKEN only needs to read Repo 1.
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-repo-2-staging
+  cancel-in-progress: true
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repo 1
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Verify & Push to Repo 2
+      - name: Push to Repo 2 staging
         env:
-          PAT: ${{ secrets.REPO_2_PAT }}
+          REPO_2_PAT: ${{ secrets.REPO_2_PAT }}
+          TARGET_REPO: GPL-PRC0977/repo_2
+        shell: bash
         run: |
-          # 1. Check if the secret is being detected
-          if [ -z "$PAT" ]; then
-            echo "CRITICAL ERROR: The secret REPO_2_PAT is empty or not accessible."
-            echo "Please verify it exists under Repo 1 Settings -> Secrets and variables -> Actions."
-            exit 1
-          else
-            echo "SUCCESS: REPO_2_PAT secret detected."
-          fi
+          set -euo pipefail
 
-          # 2. Configure Git user details
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # 3. Add Repo 2 remote
-          git remote add target "https://x-access-token:${PAT}@github.com/GPL-PRC0977/repo_2.git"
+          # Avoid permanently storing the PAT in the repository's remote URL.
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$REPO_2_PAT" | base64 -w 0)"
 
-          # 4. Attempt Push
-          echo "Pushing code to GPL-PRC0977/repo_2 (staging branch)..."
-          git push target HEAD:refs/heads/staging --force
+          git \
+            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+            push \
+            "https://github.com/${TARGET_REPO}.git" \
+            HEAD:refs/heads/staging \
+            --force
