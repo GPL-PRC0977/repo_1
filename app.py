@@ -1,2 +1,1 @@
 print("This is a sample Python application.")
-print("------------------------------------------------")
