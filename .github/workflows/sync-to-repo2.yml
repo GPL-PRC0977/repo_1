@@ -3,7 +3,7 @@ name: Sync to Repo 2 Staging
 on:
   push:
     branches:
-      - main
+      - new_features
   workflow_dispatch:
 
 permissions:
