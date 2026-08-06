@@ -1,42 +1,89 @@
-- name: Push to Repo 2 staging
-  env:
-    REPO_2_PAT: ${{ secrets.REPO_2_PAT }}
-    TARGET_REPO: GPL-PRC0977/repo_2
-  shell: bash
-  run: |
-    set -uo pipefail
+name: Sync to Repo 2 Staging
 
-    git config user.name "github-actions[bot]"
-    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-    AUTH_HEADER="$(printf 'x-access-token:%s' "$REPO_2_PAT" | base64 -w 0)"
-    TARGET_URL="https://github.com/${TARGET_REPO}.git"
+permissions:
+  contents: read
 
-    echo "Current source commit:"
-    git log -1 --oneline
+concurrency:
+  group: sync-repo-2-staging
+  cancel-in-progress: true
 
-    echo "Target staging commit:"
-    git \
-      -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
-      ls-remote "$TARGET_URL" refs/heads/staging || true
+jobs:
+  sync:
+    runs-on: ubuntu-latest
 
-    echo "Attempting push..."
+    steps:
+      - name: Checkout Repo 1
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-    set +e
-    OUTPUT="$(
-      git \
-        -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
-        push \
-        "$TARGET_URL" \
-        HEAD:refs/heads/staging \
-        --force 2>&1
-    )"
-    STATUS=$?
-    set -e
+      - name: Validate destination authentication
+        env:
+          REPO_2_PAT: ${{ secrets.REPO_2_PAT }}
+          TARGET_REPO: GPL-PRC0977/repo_2
+        shell: bash
+        run: |
+          set -euo pipefail
 
-    printf '%s\n' "$OUTPUT"
+          if [ -z "${REPO_2_PAT:-}" ]; then
+            echo "::error::REPO_2_PAT is missing or empty"
+            exit 1
+          fi
 
-    if [ "$STATUS" -ne 0 ]; then
-      echo "::error title=Repo 2 push failed::Git exited with status $STATUS. Review the full push output above."
-      exit "$STATUS"
-    fi
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$REPO_2_PAT" | base64 -w 0)"
+
+          git \
+            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+            ls-remote \
+            "https://github.com/${TARGET_REPO}.git" \
+            refs/heads/staging
+
+      - name: Push to Repo 2 staging
+        env:
+          REPO_2_PAT: ${{ secrets.REPO_2_PAT }}
+          TARGET_REPO: GPL-PRC0977/repo_2
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$REPO_2_PAT" | base64 -w 0)"
+          TARGET_URL="https://github.com/${TARGET_REPO}.git"
+
+          echo "Source commit:"
+          git log -1 --oneline
+
+          echo "Destination staging branch:"
+          git \
+            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+            ls-remote "$TARGET_URL" refs/heads/staging || true
+
+          echo "Pushing source HEAD to staging..."
+
+          set +e
+          OUTPUT="$(
+            git \
+              -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+              push \
+              "$TARGET_URL" \
+              HEAD:refs/heads/staging \
+              --force 2>&1
+          )"
+          STATUS=$?
+          set -e
+
+          printf '%s\n' "$OUTPUT"
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error title=Repo 2 push failed::Git exited with status $STATUS"
+            exit "$STATUS"
+          fi
