@@ -15,7 +15,7 @@ jobs:
       - name: Sync to Repo 2 (staging branch)
         env:
           PAT: ${{ secrets.REPO_2_PAT }}
-          TARGET_REPO: "https://github.com/GPL-PRC0977/repo-2"  # Replace with actual GitHub owner/repo-2 name
+          TARGET_REPO: "https://github.com/GPL-PRC0977/repo_2"  # Replace with actual GitHub owner/repo-2 name
         run: |
           # Set up Git config
           git config --global user.name "github-actions[bot]"
