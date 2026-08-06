@@ -15,15 +15,13 @@ jobs:
       - name: Sync to Repo 2 (staging branch)
         env:
           PAT: ${{ secrets.REPO_2_PAT }}
-          TARGET_REPO: "GPL-PRC0977/repo_2"  # Replace with actual GitHub owner/repo-2 name
+          TARGET_REPO: "GPL-PRC0977/repo_2"
         run: |
-          # Set up Git config
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Add Repo 2 as a remote target using the PAT for auth
-          git remote add target https://x-access-token:${PAT}@github.com/${TARGET_REPO}.git
+          # Use clean HTTPS URL without inline credentials
+          git remote add target "https://github.com/${TARGET_REPO}.git"
           
-          # Push the current branch content directly to Repo 2's staging branch
-          # Using --force ensures repo 2 staging stays perfectly synced with repo 1
-          git push target HEAD:refs/heads/staging --force
+          # Pass the PAT securely via extraheader configuration
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(echo -n "oauth2:${PAT}" | base64 -w 0)" push target HEAD:refs/heads/staging --force
