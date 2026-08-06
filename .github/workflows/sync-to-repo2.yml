@@ -11,17 +11,13 @@ jobs:
     steps:
       - name: Checkout Repo 1
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history so push succeeds cleanly
 
-      - name: Sync to Repo 2 (staging branch)
-        env:
-          PAT: ${{ secrets.REPO_2_PAT }}
-          TARGET_REPO: "GPL-PRC0977/repo_2"
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Use clean HTTPS URL without inline credentials
-          git remote add target "https://github.com/${TARGET_REPO}.git"
-          
-          # Pass the PAT securely via extraheader configuration
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(echo -n "oauth2:${PAT}" | base64 -w 0)" push target HEAD:refs/heads/staging --force
+      - name: Push to Repo 2 Staging
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.REPO_2_PAT }}
+          repository: 'GPL-PRC0977/repo_2'
+          branch: 'staging'
+          force: true
