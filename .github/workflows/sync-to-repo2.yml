@@ -1,0 +1,32 @@
+name: Sync to Repo 2 Staging
+
+on:
+  push:
+    branches:
+      - main  # Change to your Repo 1 source branch if different
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo 1
+        uses: actions/checkout@v4
+
+      - name: Sync to Repo 2 (staging branch)
+        env:
+          PAT: ${{ secrets.REPO_2_PAT }}
+          TARGET_REPO: "https://github.com/GPL-PRC0977/repo-2"  # Replace with actual GitHub owner/repo-2 name
+        run: |
+          # Set up Git config
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add Repo 2 as a remote target using the PAT for auth
+          git remote add target https://x-access-token:${PAT}@github.com/${TARGET_REPO}.git
+          
+          # Fetch Repo 2 branches
+          git fetch target
+          
+          # Push the current branch content directly to Repo 2's staging branch
+          # Using --force ensures repo 2 staging stays perfectly synced with repo 1
+          git push target HEAD:refs/heads/staging --force
