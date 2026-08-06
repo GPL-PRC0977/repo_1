@@ -9,15 +9,24 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Checkout Repo 1 without saving default GITHUB_TOKEN credentials
       - name: Checkout Repo 1
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history so push succeeds cleanly
+          persist-credentials: false
+          fetch-depth: 0  # Ensures full commit history is retrieved
 
-      - name: Push to Repo 2 Staging
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.REPO_2_PAT }}
-          repository: 'GPL-PRC0977/repo_2'
-          branch: 'staging'
-          force: true
+      # Step 2: Push code to Repo 2 staging branch using your custom PAT
+      - name: Sync to Repo 2 (staging branch)
+        env:
+          PAT: ${{ secrets.REPO_2_PAT }}
+          TARGET_REPO: "GPL-PRC0977/repo_2"
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add Repo 2 remote using authentication inline
+          git remote add target https://x-access-token:${PAT}@github.com/${TARGET_REPO}.git
+          
+          # Push directly to Repo 2 staging
+          git push target HEAD:refs/heads/staging --force
